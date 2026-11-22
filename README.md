@@ -58,7 +58,20 @@
 | 换武器 / 道具 | 控制区左上两个按钮 |
 | 暂停 | 世界区右上角 |
 
+## 演示
+
+![gameplay demo](docs/screenshots/demo.gif)
+
+> 上面这段 GIF 是在 **Android 11 x86_64 模拟器**（KVM 加速）里安装本仓库 Release APK 后实录的：标题 → 剧情简报 → 第 1 层实机操作。
+
 ## 截图
+
+### 实机（模拟器 1080×1920 原始截图）
+| 标题 | 第 1 层出生点 |
+|---|---|
+| ![device title](docs/screenshots/device_title.png) | ![device gameplay](docs/screenshots/device_gameplay.png) |
+
+### 全部界面（桌面 Java2D 渲染核心出图，720×1280）
 
 > 全部截图由项目内的桌面预览工具（Java2D 渲染核心）自动生成，与 Android 端使用同一套游戏代码。
 
