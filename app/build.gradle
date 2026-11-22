@@ -1,0 +1,61 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.crazyclinic.android'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.crazyclinic.android'
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName '1.0.0'
+        resConfigs 'zh'
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+        encoding 'UTF-8'
+    }
+
+    buildFeatures {
+        buildConfig false
+    }
+
+    def ksPath = System.getenv('CC_KEYSTORE') ?: "${rootDir}/.keystore/crazyclinic.jks"
+    def ksFile = file(ksPath)
+    signingConfigs {
+        release {
+            if (ksFile.exists()) {
+                storeFile ksFile
+                storePassword System.getenv('CC_KEYSTORE_PASS') ?: 'crazyclinic'
+                keyAlias System.getenv('CC_KEY_ALIAS') ?: 'crazyclinic'
+                keyPassword System.getenv('CC_KEY_PASS') ?: 'crazyclinic'
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            applicationIdSuffix '.debug'
+            versionNameSuffix '-debug'
+        }
+        release {
+            minifyEnabled false
+            shrinkResources false
+            signingConfig ksFile.exists() ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
+    }
+}
+
+dependencies {
+    implementation project(':core')
+}

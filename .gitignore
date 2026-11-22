@@ -1,0 +1,26 @@
+# Gradle / Android
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+captures/
+.externalNativeBuild/
+.cxx/
+
+# 本地签名与密钥（绝不提交）
+.keystore/
+*.jks
+*.keystore
+.secrets/
+
+# 调研资料（原版 JAR/截图，版权资源，仅本地参考）
+research/
+
+# 构建验证产物
+build-tools-out/
+screenshots-preview/
+
+# OS
+.DS_Store
+Thumbs.db
