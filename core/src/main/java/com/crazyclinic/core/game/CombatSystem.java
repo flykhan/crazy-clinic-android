@@ -351,6 +351,7 @@ final class CombatSystem {
         }
         p.attackCd = Math.max(0.05f, ws.cooldown);
         p.muzzleFlash = 0.05f;
+        p.fireHold = Math.max(p.fireHold, 0.14f);   // art 用它判断"正在喷火"的姿态
         // 燃料：每约 0.55s 消耗 1 点
         flameFuelTimer += ws.cooldown;
         if (flameFuelTimer >= BUNSEN_FUEL_PER_AMMO) {

@@ -133,6 +133,11 @@ public final class ValidateLevels {
         if (sx < 0) {
             errs.add("找不到出生点 S");
         } else {
+            // 出生点距地图上边界至少 4 个 tile，否则会被顶部 HUD（0~240px）遮住
+            if (def.spawnY < TileMap.TILE * 4f) {
+                errs.add("出生点距上边界 < 4 tile（y=" + (int) def.spawnY
+                        + "px，会被顶部 HUD 遮挡）");
+            }
             if (!map.solidAt(def.spawnX, def.spawnY)) {
                 int ptx = map.tx(def.spawnX), pty = map.ty(def.spawnY);
                 if (!noKey[pty * w + ptx]) errs.add("出生点不在可通行区域");

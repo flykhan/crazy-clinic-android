@@ -34,6 +34,7 @@ final class CharacterArt {
         float t = w.time;
         boolean invis = p.invisTimer > 0f;
         float baseAlpha = invis ? 0.42f : 1f;
+        float hurt = MathUtil.clamp(p.hurtFlash / 0.16f, 0f, 1f);
 
         // 闪避残影
         if (p.dodgeTimer > 0f) {
@@ -54,7 +55,7 @@ final class CharacterArt {
         }
         Art.shadow(r, p.x, p.y + 4f, 28f, 10f, 115);
         playerFigure(r, p.x, p.y, p.angle, p.aimAngle, t, p.moving,
-                p.hurtFlash, baseAlpha, p.weapon, p.muzzleFlash > 0f || p.fireHold > 0f);
+                hurt, baseAlpha, p.weapon, p.muzzleFlash > 0f || p.fireHold > 0f);
 
         // 攻击状态提示（近战挥砍弧光 / 枪械后坐）
         WeaponType wp = p.weapon;
@@ -65,9 +66,10 @@ final class CharacterArt {
             Art.fan(r, p.x, p.y - 44f, 62f, a0 + 0.1f, 1.3f, Art.a(Palette.WHITE, 0.12f));
         }
         if (!st.melee && p.muzzleFlash > 0f) {
+            float mi = MathUtil.clamp(p.muzzleFlash / 0.12f, 0f, 1f);
             float mx = p.x + (float) Math.cos(p.aimAngle) * 52f;
             float my = p.y - 44f + (float) Math.sin(p.aimAngle) * 34f;
-            Art.glow(r, mx, my, 26f, Palette.GOLD, p.muzzleFlash);
+            Art.glow(r, mx, my, 26f, Palette.GOLD, mi);
             // 枪口火星
             for (int i = 0; i < 4; i++) {
                 float a = p.aimAngle + (i - 1.5f) * 0.22f;
@@ -76,6 +78,30 @@ final class CharacterArt {
             }
         }
 
+        // 加速药/EPO：身后拖影速度线
+        if (p.speedBoostTimer > 0f) {
+            float a = MathUtil.clamp(p.speedBoostTimer * 1.4f, 0f, 1f);
+            for (int i = 0; i < 3; i++) {
+                float off = 36f + i * 22f;
+                float bx = p.x - (float) Math.cos(p.aimAngle) * off;
+                float by = p.y - 40f - (float) Math.sin(p.aimAngle) * off;
+                r.line(bx, by, bx - (float) Math.cos(p.aimAngle) * 22f, by - (float) Math.sin(p.aimAngle) * 22f,
+                        2.4f - i * 0.4f, Art.a(0xFF9AD8F0, 0.22f * a));
+            }
+        }
+        // 本生灯持续喷射：火焰扇
+        if (p.fireHold > 0f) {
+            float fi = MathUtil.clamp(p.fireHold / 0.14f, 0f, 1f);
+            float ax = p.x + (float) Math.cos(p.aimAngle) * 30f;
+            float ay = p.y - 46f + (float) Math.sin(p.aimAngle) * 30f;
+            for (int i = 0; i < 3; i++) {
+                float d = 14f + i * 14f;
+                float fx = ax + (float) Math.cos(p.aimAngle) * d;
+                float fy = ay + (float) Math.sin(p.aimAngle) * d;
+                Art.ellipse(r, fx, fy, 13f - i * 2f, 9f - i * 1.5f,
+                        Art.a(i == 0 ? Palette.ORANGE : (i == 1 ? Palette.GOLD : Palette.LIGHT), 0.35f * fi));
+            }
+        }
         r.setAlpha(1f);
     }
 
@@ -200,7 +226,7 @@ final class CharacterArt {
             return;
         }
         boolean moving = e.state == EnemyState.CHASE || e.state == EnemyState.PATROL;
-        float f = MathUtil.clamp(e.hurtFlash, 0f, 1f);
+        float f = MathUtil.clamp(e.hurtFlash / 0.16f, 0f, 1f);
         float bob = moving ? (float) Math.abs(Math.sin(t * 9f + e.homeX * 0.01f)) * 1.6f : 0f;
         float fy = e.y - bob;
         float angle = e.angle;
@@ -316,6 +342,9 @@ final class CharacterArt {
         if (face) {
             int eyeCol = e.type == EnemyType.BOSS ? 0xFFFF3A2A
                     : (e.type == EnemyType.FLU_PATIENT ? 0xFF4A5A3A : 0xFF2A2222);
+            if (e.type == EnemyType.BOSS && e.hp / Math.max(1f, e.maxHp) < 0.33f) {
+                eyeCol = 0xFFFFE137;   // 三阶段：金红发光眼
+            }
             Art.discOutlined(r, hx - 6.5f * scale + ex * 0.35f, hy - 1f * scale + ey * 0.4f,
                     2.8f * scale, eyeCol, 0xFF1A1414, 0.6f);
             Art.discOutlined(r, hx + 6.5f * scale + ex * 0.35f, hy - 1f * scale + ey * 0.4f,
@@ -370,25 +399,35 @@ final class CharacterArt {
             }
         }
 
-        // 警戒/追击标记
+        // 警戒/追击标记（ALERT 随 alertTimer 0.8s 淡出+弹跳）
         if (e.state == EnemyState.ALERT || e.state == EnemyState.CHASE) {
             boolean chase = e.state == EnemyState.CHASE;
+            float aa = chase ? 1f : MathUtil.clamp(e.alertTimer / 0.8f, 0f, 1f);
+            float pop = chase ? 1f : (1.15f - aa * 0.15f);
             float by = hy - headR - 26f * scale + (float) Math.sin(t * 8f) * 2f;
-            Art.discOutlined(r, hx, by, 13f * scale, chase ? Palette.RED : Art.HAZARD, 0xFF2A1414, 2.4f);
-            r.setTextSize(20f * scale);
+            Art.discOutlined(r, hx, by, 13f * scale * pop,
+                    Art.a(chase ? Palette.RED : Art.HAZARD, 0.35f + 0.65f * aa), 0xFF2A1414, 2.4f);
+            r.setTextSize(20f * scale * pop);
             r.setTextBold(true);
             r.setTextAlign(1);
-            r.setTextColor(chase ? Palette.WHITE : 0xFF2A1A0A);
-            r.drawText(chase ? "!" : "?", hx, by);
+            r.setTextColor(Art.a(chase ? Palette.WHITE : 0xFF2A1A0A, 0.4f + 0.6f * aa));
+            r.drawText("!", hx, by);
             r.setTextBold(false);
         }
 
-        // 护士复活读条
+        // 护士复活读条（reviveTimer 0→3s 递增，头顶进度条 + 注射器微光）
         if (e.type == EnemyType.NURSE && e.reviveTimer > 0f) {
             float w0 = 46f * scale;
-            r.fillRoundRect(e.x - w0 / 2, hy - headR - 20f * scale, w0, 7f * scale, 3f, Art.a(Palette.BLACK, 0.75f));
-            float p = MathUtil.clamp(e.reviveTimer / 3f, 0f, 1f);
-            r.fillRoundRect(e.x - w0 / 2 + 1, hy - headR - 19f * scale, (w0 - 2) * (1f - p), 5f * scale, 2f, Palette.PURPLE);
+            float pgr = MathUtil.clamp(e.reviveTimer / 3f, 0f, 1f);
+            float py0 = hy - headR - 20f * scale;
+            r.fillRoundRect(e.x - w0 / 2, py0, w0, 7f * scale, 3f, Art.a(Palette.BLACK, 0.75f));
+            r.fillRoundRect(e.x - w0 / 2 + 1, py0 + 1, (w0 - 2) * pgr, 5f * scale, 2f, Palette.PURPLE);
+            float pl = 0.5f + 0.5f * (float) Math.sin(t * 10f);
+            Art.glow(r, e.x, py0 - 2f, 22f, Palette.PURPLE, 0.4f + 0.3f * pl);
+            r.setTextSize(13f * scale);
+            r.setTextAlign(1);
+            r.setTextColor(Art.a(0xFFE8C4FF, 0.85f));
+            r.drawText("复活中", e.x, py0 - 12f * scale);
         }
 
         // 血条
@@ -627,6 +666,12 @@ final class CharacterArt {
             Art.discOutlined(r, 2f, -8f, 4.2f, Art.a(Palette.ALERT, 0.55f + 0.45f * blink), 0xFF0E1216, 1.4f);
             if (alarmed) Art.glow(r, 46f, 0f, 16f, Palette.RED, 0.9f);
         }
+        // 开火枪口焰
+        if (!offline && e.muzzleFlash > 0f) {
+            float mf = MathUtil.clamp(e.muzzleFlash / 0.12f, 0f, 1f);
+            r.fillTriangle(44f, -8f, 62f, 0f, 44f, 8f, Art.a(Palette.ORANGE, 0.9f * mf));
+            r.fillTriangle(44f, -4f, 56f, 0f, 44f, 4f, Art.a(Palette.GOLD, 0.95f * mf));
+        }
         r.restore();
         if (offline) {
             // 断电：歪垂的天线 + 一点电火花
@@ -679,7 +724,9 @@ final class CharacterArt {
 
     private static void drawCorpse(Renderer r, World w, Enemy e) {
         float scale = e.type == EnemyType.BOSS ? 1.5f : 1f;
-        float fade = e.bodyTimer > 0f ? MathUtil.clamp(e.bodyTimer / 1.2f, 0f, 1f) : 1f;
+        // deathTimer 30→0 表示尸体存在时长，最后 5s 淡出
+        float fade = MathUtil.clamp(e.deathTimer / 5f, 0f, 1f);
+        if (fade <= 0.01f && e.deathTimer <= 0.01f) fade = 0.2f;
         int cloth;
         switch (e.type) {
             case GUARD: cloth = GUARD_CLOTH; break;
@@ -717,5 +764,12 @@ final class CharacterArt {
         // 眼睛 X
         r.line(hx - 5f, hy - 3f, hx - 1f, hy + 1f, 1.8f, Palette.withAlpha(0xFF2A2222, a));
         r.line(hx - 1f, hy - 3f, hx - 5f, hy + 1f, 1.8f, Palette.withAlpha(0xFF2A2222, a));
+        // 可被护士复活的淡标记（bodyTimer>0 期间）
+        if (e.bodyTimer > 0f) {
+            float pulse = 0.5f + 0.5f * (float) Math.sin(w.time * 4f + e.x * 0.01f);
+            int pc = Art.a(0xFFB06AE8, (0.14f + 0.14f * pulse) * fade);
+            r.fillRect(e.x - 6f, e.y - 34f * scale, 12f, 3f, pc);
+            r.fillRect(e.x - 1.5f, e.y - 38.5f * scale, 3f, 12f, pc);
+        }
     }
 }

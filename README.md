@@ -20,6 +20,8 @@
 
 ## 这是什么
 
+> 项目发起人 / 出品：[**flykhan**](https://github.com/flykhan) — 本重制版由 flykhan 发起并主导，DeepSeek Harness 多智能体协作实现。
+
 **《疯狂诊所》**（J2ME 时代国内渠道名）实为德国 **HandyGames** 2009 年的竖屏俯视角动作游戏 **《Crazy Hospital / 疯狂医院》** 的中国移动百宝箱中文版（net mobile AG 汉化，创艺和弦发行）。
 
 本项目是它的**非商业同人重制版**：
@@ -133,6 +135,7 @@ tools/audio/    程序化 WAV 音效/BGM 生成脚本
 
 ## 致谢
 
+- **项目发起人 / 出品人：[flykhan](https://github.com/flykhan)** —— 提供项目愿景、GitHub 仓库与全部验收决策；
 - 原版游戏 HandyGames / net mobile AG / 创艺和弦；
 - 本重制版由 **DeepSeek Harness 多智能体协作开发**：Lead（架构/集成/QA）、engine（玩法系统）、art（程序化美术）、ui（菜单界面）、level（关卡数值文案）、android（安卓平台/音频/预览）、researcher（原版逆向考证）；
 - Java2D 截图渲染使用系统 CJK 字体。
@@ -147,6 +150,6 @@ tools/audio/    程序化 WAV 音效/BGM 生成脚本
 
 [![](https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness)
 
-用 **DeepSeek Harness** 多智能体协作完成：Lead 架构/集成/QA · engine 引擎 · art 美术 · ui 界面 · level 关卡 · android 安卓 · researcher 原版逆向
+由 [**flykhan**](https://github.com/flykhan) 发起 · 用 **DeepSeek Harness** 多智能体协作完成：Lead 架构/集成/QA · engine 引擎 · art 美术 · ui 界面 · level 关卡 · android 安卓 · researcher 原版逆向
 
 </div>

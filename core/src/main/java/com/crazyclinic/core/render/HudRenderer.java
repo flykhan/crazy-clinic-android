@@ -522,17 +522,21 @@ public final class HudRenderer {
     private void drawBossBar(Renderer r, World w, HudState hud) {
         if (hud.bossHp <= 0f) return;
         float ratio = MathUtil.clamp(hud.bossHp / Math.max(1f, hud.bossMaxHp), 0f, 1f);
+        int phase = ratio > 0.66f ? 1 : (ratio > 0.33f ? 2 : 3);
         float bx = 96f, by = 902f, bw = 528f, bh = 22f;
         float t = w.time;
+        int mainCol = phase == 1 ? 0xFFB84AC0 : (phase == 2 ? 0xFFD8644A : 0xFFE0392A);
+        int darkCol = phase == 1 ? 0xFF7E2A8A : (phase == 2 ? 0xFF8A3418 : 0xFF8A1414);
         // 名牌
         String name = hud.bossName == null ? "赞恩" : hud.bossName;
-        r.fillRoundRect(360f - 110f, 868f, 220f, 28f, 9f, Art.a(0xFF1A1020, 0.88f));
-        r.strokeRoundRect(360f - 110f, 868f, 220f, 28f, 9f, 2f, Art.a(GOLD, 0.8f));
-        r.setTextSize(20f);
+        String plate = "BOSS · " + name + "  " + romanPhase(phase);
+        r.fillRoundRect(360f - 132f, 868f, 264f, 28f, 9f, Art.a(0xFF1A1020, 0.88f));
+        r.strokeRoundRect(360f - 132f, 868f, 264f, 28f, 9f, 2f, Art.a(GOLD, 0.8f));
+        r.setTextSize(19f);
         r.setTextBold(true);
         r.setTextAlign(1);
         r.setTextColor(GOLD);
-        r.drawText("BOSS · " + name, 360f, 882f);
+        r.drawText(plate, 360f, 882f);
         r.setTextBold(false);
         // 头骨徽标
         Art.discOutlined(r, 70f, by + bh / 2f, 20f, Art.a(0xFF241A2E, 0.95f), Art.a(GOLD, 0.7f), 2f);
@@ -542,24 +546,29 @@ public final class HudRenderer {
         r.fillTriangle(67f, by + bh / 2f + 4f, 73f, by + bh / 2f + 4f, 70f, by + bh / 2f + 8f, 0xFF2A2222);
         // 血条
         r.fillRoundRect(bx - 2f, by - 2f, bw + 4f, bh + 4f, 10f, Art.a(0xFF06080C, 0.9f));
-        r.fillRoundRect(bx, by, bw, bh, 9f, 0xFF2A1030);
+        r.fillRoundRect(bx, by, bw, bh, 9f, Art.a(darkCol, 0.6f));
         if (ratio > 0.005f) {
-            r.fillRoundRect(bx, by, bw * ratio, bh, 9f, 0xFF7E2A8A);
-            r.fillRoundRect(bx, by + 2f, bw * ratio, bh - 8f, 7f, 0xFFB84AC0);
-            r.fillRoundRect(bx, by + 2f, bw * ratio, 4f, 3f, Art.a(0xFFF0A8F8, 0.55f));
+            r.fillRoundRect(bx, by, bw * ratio, bh, 9f, darkCol);
+            r.fillRoundRect(bx, by + 2f, bw * ratio, bh - 8f, 7f, mainCol);
+            r.fillRoundRect(bx, by + 2f, bw * ratio, 4f, 3f, Art.a(0xFFFFD0F8, 0.5f));
         }
         // 分节 + 边框
         for (int i = 1; i < 8; i++) r.fillRect(bx + bw * i / 8f, by + 3f, 1.6f, bh - 6f, Art.a(0xFF1A0A1E, 0.6f));
         r.strokeRoundRect(bx, by, bw, bh, 9f, 2.2f, Art.a(GOLD, 0.85f));
-        // 狂暴闪光
-        if (ratio < 0.35f) {
+        // 三阶段狂暴闪光
+        if (phase == 3) {
             float pulse = 0.5f + 0.5f * (float) Math.sin(t * 8f);
             r.strokeRoundRect(bx - 2f, by - 2f, bw + 4f, bh + 4f, 10f, 2.4f, Art.a(Palette.RED, 0.3f + 0.5f * pulse));
+            r.fillRect(bx, by + bh + 3f, bw * pulse, 3f, Art.a(Palette.RED, 0.5f));
         }
         r.setTextSize(14f);
         r.setTextAlign(2);
         r.setTextColor(Art.a(0xFFF0E0F4, 0.9f));
         r.drawText((int) Math.ceil(hud.bossHp) + " / " + (int) hud.bossMaxHp, bx + bw - 8f, by + bh / 2f);
+    }
+
+    private static String romanPhase(int phase) {
+        return phase == 1 ? "· 一阶段" : (phase == 2 ? "· 二阶段" : "· 最终阶段");
     }
 
     // ==================== 控制区 ====================

@@ -115,6 +115,7 @@ final class EnemyAI {
             if (e == null) continue;
             if (e.hurtFlash > 0f) e.hurtFlash = Math.max(0f, e.hurtFlash - dt);
             if (e.muzzleFlash > 0f) e.muzzleFlash = Math.max(0f, e.muzzleFlash - dt);
+            if (e.alertTimer > 0f) e.alertTimer = Math.max(0f, e.alertTimer - dt);
 
             if (e.isDead()) {
                 if (e.deathTimer > 0f) e.deathTimer = Math.max(0f, e.deathTimer - dt);

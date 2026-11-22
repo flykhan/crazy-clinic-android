@@ -16,8 +16,15 @@ public final class AboutScene implements Scene {
     private final Rect back = new Rect(34f, 72f, 76f, 76f);
     private static final Rect ORIGINAL = new Rect(48f, 368f, 624f, 190f);
     private static final Rect NOTICE = new Rect(48f, 578f, 624f, 190f);
-    private static final Rect TECH = new Rect(48f, 788f, 624f, 152f);
-    private static final Rect CREDITS = new Rect(48f, 960f, 624f, 122f);
+    private static final Rect TECH = new Rect(48f, 786f, 624f, 146f);
+    private static final Rect FOUNDER = new Rect(48f, 948f, 624f, 80f);
+    private static final Rect CREDITS = new Rect(48f, 1044f, 624f, 112f);
+
+    // 项目发起人署名（ui 包内文案，不改动 AboutScene 之外的文件）
+    private static final String FOUNDER_LABEL = "发起人 · PROJECT INITIATOR";
+    private static final String FOUNDER_NAME = "flykhan";
+    private static final String FOUNDER_URL = "github.com/flykhan";
+
     private static final int[] CREDIT_COLORS = {
             UiKit.GOLD_LIGHT, Palette.MINT, Palette.PURPLE, Palette.CYAN, Palette.GREEN, Palette.BLUE
     };
@@ -73,41 +80,44 @@ public final class AboutScene implements Scene {
         drawSection(r, TECH, MenuTexts.ABOUT_TECH_TITLE, MenuTexts.ABOUT_TECH,
                 Palette.CYAN, 22f);
 
+        // 发起人署名卡片（技术栈下方）
+        drawFounder(r);
+
         // 参与代号
         UiKit.panel(r, CREDITS, Palette.MINT, time);
         r.setTextSize(20f);
         r.setTextBold(true);
         r.setTextAlign(0);
         r.setTextColor(Palette.alpha(Palette.MINT, 0.9f));
-        r.drawText(MenuTexts.ABOUT_CREDITS, CREDITS.x + 30f, CREDITS.y + 28f);
+        r.drawText(MenuTexts.ABOUT_CREDITS, CREDITS.x + 30f, CREDITS.y + 26f);
         float areaX = CREDITS.x + 28f;
         float areaW = CREDITS.w - 56f;
         float cell = areaW / MenuTexts.CREDITS.length;
         for (int i = 0; i < MenuTexts.CREDITS.length; i++) {
             float cx = areaX + cell * (i + 0.5f);
             int color = CREDIT_COLORS[i % CREDIT_COLORS.length];
-            r.fillCircle(cx, CREDITS.y + 62f, 5f, Palette.alpha(color, 0.9f));
+            r.fillCircle(cx, CREDITS.y + 56f, 5f, Palette.alpha(color, 0.9f));
             r.setTextSize(20f);
             r.setTextBold(true);
             r.setTextAlign(1);
             r.setTextColor(color);
-            r.drawText(MenuTexts.CREDITS[i], cx, CREDITS.y + 84f);
+            r.drawText(MenuTexts.CREDITS[i], cx, CREDITS.y + 76f);
             r.setTextSize(15f);
             r.setTextBold(false);
             r.setTextColor(Palette.alpha(Palette.TEXT_DARK, 0.95f));
-            r.drawText(MenuTexts.CREDIT_ROLES[i], cx, CREDITS.y + 106f);
+            r.drawText(MenuTexts.CREDIT_ROLES[i], cx, CREDITS.y + 98f);
         }
 
         // 底部
-        r.setTextSize(19f);
+        r.setTextSize(18f);
         r.setTextBold(false);
         r.setTextAlign(1);
         r.setTextColor(Palette.alpha(Palette.TEXT_DIM, 0.9f));
-        r.drawText("本重制版与 HandyGames 无隶属关系 · 请勿商用", UiKit.W * 0.5f, 1118f);
-        r.setTextSize(17f);
+        r.drawText("本重制版与 HandyGames 无隶属关系 · 请勿商用", UiKit.W * 0.5f, 1178f);
+        r.setTextSize(16f);
         r.setTextColor(Palette.alpha(Palette.TEXT_DARK, 0.9f));
-        r.drawText(MenuTexts.ABOUT_FOOTER, UiKit.W * 0.5f, 1152f);
-        r.drawText("JAVA EDITION · v1.0.0 · 2026", UiKit.W * 0.5f, 1182f);
+        r.drawText(MenuTexts.ABOUT_FOOTER, UiKit.W * 0.5f, 1204f);
+        r.drawText("JAVA EDITION · v1.0.0 · 2026", UiKit.W * 0.5f, 1228f);
         r.restore();
 
         // 左上返回提示
@@ -116,7 +126,35 @@ public final class AboutScene implements Scene {
         r.setTextAlign(0);
         r.setTextColor(Palette.alpha(Palette.TEXT_DARK, 0.8f));
         r.drawText("返回", 120f, 110f);
-        UiKit.hint(r, "点左上角箭头返回标题", 1230f, 0.55f);
+    }
+
+    /** 发起人署名卡片：与其他卡片同风格，金色强调。 */
+    private void drawFounder(Renderer r) {
+        UiKit.panel(r, FOUNDER, UiKit.GOLD_LIGHT, time);
+        float cy = FOUNDER.y + FOUNDER.h * 0.5f;
+        // 星章
+        r.fillCircle(FOUNDER.x + 48f, cy, 26f, Palette.alpha(Palette.GOLD, 0.16f));
+        r.strokeCircle(FOUNDER.x + 48f, cy, 26f, 2f, Palette.alpha(Palette.GOLD, 0.75f));
+        UiKit.iconStar(r, FOUNDER.x + 48f, cy, 15f, Palette.GOLD);
+        // 左侧：发起人 + 名字
+        r.setTextSize(16f);
+        r.setTextBold(true);
+        r.setTextAlign(0);
+        r.setTextColor(Palette.alpha(Palette.GOLD, 0.9f));
+        r.drawText(FOUNDER_LABEL, FOUNDER.x + 88f, cy - 15f);
+        r.setTextSize(30f);
+        r.setTextBold(true);
+        r.setTextColor(UiKit.GOLD_LIGHT);
+        r.drawText(FOUNDER_NAME, FOUNDER.x + 88f, cy + 17f);
+        // 右侧：GitHub 地址（等宽感、薄荷绿）
+        r.setTextSize(20f);
+        r.setTextBold(true);
+        r.setTextAlign(2);
+        r.setTextColor(Palette.alpha(Palette.MINT, 0.95f));
+        r.drawText(FOUNDER_URL, FOUNDER.x + FOUNDER.w - 30f, cy + 15f);
+        float uw = r.measureText(FOUNDER_URL);
+        float ux = FOUNDER.x + FOUNDER.w - 30f - uw;
+        r.fillRect(ux, cy + 30f, uw, 1.5f, Palette.alpha(Palette.MINT, 0.45f));
     }
 
     private void drawSection(Renderer r, Rect panel, String title, String body, int accent, float size) {

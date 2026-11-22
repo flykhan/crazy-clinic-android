@@ -27,6 +27,11 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         Window window = getWindow();
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        // Android 10+：当系统栏透明时不要叠加对比度遮罩（否则手势导航条会有一条亮边）
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.setNavigationBarContrastEnforced(false);
+            window.setStatusBarContrastEnforced(false);
+        }
         // 刘海屏：允许内容延伸到短边（竖屏时即顶部刘海区域）
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             WindowManager.LayoutParams lp = window.getAttributes();
@@ -161,7 +166,11 @@ public class MainActivity extends Activity {
     @Override
     @SuppressWarnings("deprecation")
     public void onBackPressed() {
-        // 返回键交给当前 Scene 处理（暂停/返回上级菜单），关卡内不直接退出
+        // 标题页再按返回 = 退出应用；其余场景交给 Scene（暂停/返回上级菜单）
+        if (game.scene instanceof com.crazyclinic.core.ui.TitleScene) {
+            finish();
+            return;
+        }
         game.backPressed();
     }
 }

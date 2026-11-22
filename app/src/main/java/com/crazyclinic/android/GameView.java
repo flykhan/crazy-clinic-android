@@ -227,7 +227,8 @@ public final class GameView extends SurfaceView implements SurfaceHolder.Callbac
                 canvas.drawText(String.format(Locale.ROOT, "%.0f FPS", lastFps), 16f, 34f, fpsPaint);
             }
         } catch (Exception e) {
-            // 单帧绘制异常不应杀死渲染线程
+            // 单帧绘制异常不应杀死渲染线程，但必须能诊断
+            android.util.Log.e("CCGameView", "render exception", e);
         } finally {
             try {
                 holder.unlockCanvasAndPost(canvas);

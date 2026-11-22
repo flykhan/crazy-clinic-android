@@ -74,6 +74,31 @@ final class TileArt {
             Art.ellipse(r, x + 20 + h * 30f, y + 24 + h * 18f, 2.6f, 1.5f,
                     Art.a(Palette.WHITE, 0.045f));
         }
+
+        // 地面细节：地漏 / 废纸 / 陈旧血渍（确定性分布，增强医院病区氛围）
+        float d = Art.hash(tx + 101, ty + 37);
+        if (d > 0.955f) {
+            // 圆形地漏
+            float dx = x + 20f + Art.hash(tx + 3, ty + 77) * 32f;
+            float dy = y + 20f + Art.hash(tx + 9, ty + 13) * 32f;
+            Art.ellipse(r, dx, dy, 12f, 12f, Art.a(0xFF1A2028, 0.75f));
+            r.strokeCircle(dx, dy, 11f, 1.6f, Art.a(0xFF5A6472, 0.55f));
+            for (int i = 0; i < 3; i++) r.fillRect(dx - 9f, dy - 4f + i * 3.6f, 18f, 1.6f, Art.a(0xFF3E4652, 0.9f));
+        } else if (d > 0.90f) {
+            // 地上的废纸 / 药板
+            float dx = x + 16f + Art.hash(tx + 51, ty + 5) * 38f;
+            float dy = y + 18f + Art.hash(tx + 23, ty + 91) * 36f;
+            r.fillRect(dx + 1.5f, dy + 1.5f, 13f, 9f, Art.a(Palette.BLACK, 0.25f));
+            r.fillRect(dx, dy, 13f, 9f, Art.a(0xFFD8D4C8, 0.55f));
+            r.fillRect(dx + 2f, dy + 3f, 9f, 1.2f, Art.a(0xFF8A8478, 0.7f));
+            r.fillRect(dx + 2f, dy + 6f, 6f, 1.2f, Art.a(0xFF8A8478, 0.6f));
+        } else if (d > 0.865f) {
+            // 陈旧血渍（擦过的痕迹）
+            float dx = x + 18f + Art.hash(tx + 31, ty + 61) * 36f;
+            float dy = y + 22f + Art.hash(tx + 17, ty + 43) * 30f;
+            Art.ellipseRot(r, dx, dy, 11f, 4f, h * 90f, Art.a(0xFF5A1418, 0.22f));
+            Art.ellipse(r, dx - 8f, dy + 4f, 3f, 2f, Art.a(0xFF5A1418, 0.18f));
+        }
     }
 
     /** 地板与墙相接的接触阴影（在墙下方、物体上方）。 */
@@ -162,6 +187,19 @@ final class TileArt {
         // 深色墙裙
         r.fillRect(x, y + 14, T, 16, Art.WAINSCOT);
         r.fillRect(x, y + 14, T, 1.5f, Art.a(Palette.BLACK, 0.5f));
+        // 墙面标识：十字牌 / 科室牌 / 管线（确定性）
+        float hw = Art.hash((int) x / T + 211, (int) y / T + 97);
+        if (hw > 0.72f) {
+            float sx = x + 10f + Art.hash((int) x + 7, (int) y + 5) * 26f;
+            r.fillRect(sx, y + 16f, 22f, 12f, Art.a(0xFFE8EEF2, 0.88f));
+            r.strokeRect(sx, y + 16f, 22f, 12f, 1f, Art.a(0xFF5A6472, 0.8f));
+            r.fillRect(sx + 9f, y + 18f, 4f, 8f, Art.a(0xFFD8323C, 0.9f));
+            r.fillRect(sx + 6f, y + 20f, 10f, 4f, Art.a(0xFFD8323C, 0.9f));
+        } else if (hw < 0.10f) {
+            r.fillRect(x + 2f, y + 18f, T - 4f, 3f, Art.a(0xFF8A96A6, 0.55f));
+            r.fillRect(x + 16f, y + 15f, 4f, 8f, Art.a(0xFF5A6472, 0.7f));
+            r.fillRect(x + 50f, y + 15f, 4f, 8f, Art.a(0xFF5A6472, 0.7f));
+        }
         // 墙脚阴影落到地面
         r.fillRect(x, y + 30, T, 3f, Art.a(Palette.BLACK, 0.55f));
         r.fillVerticalGradient(x, y + 30, T, 11f, Art.a(Palette.BLACK, 0.34f), Art.a(Palette.BLACK, 0f));
