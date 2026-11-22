@@ -6,6 +6,11 @@ import com.crazyclinic.core.world.WeaponType;
 /**
  * 全局数值表（复刻基准，来自 docs/research.md §5.7）。
  * 关卡代理可在本文件中调整平衡；改完记得同步 docs/design.md。
+ *
+ * 说明：
+ *  - 弹药为单池（无弹匣/换弹），maxAmmo 即一次拾取获得的总弹量；重复拾取同类武器补充该值。
+ *  - G（看守人）同时代表原版的“看守人”与“守卫”，后者 HP/伤害取看守人档位。
+ *  - 第 1 层按 §5.6 保持低敌人密度；第 10 层 BOSS 赞恩 400 HP / 24 伤害 / 三阶段。
  */
 public final class Balance {
     // ---- 玩家 ----
@@ -20,7 +25,16 @@ public final class Balance {
     public static final float DODGE_TIME = 0.35f;
     public static final float DODGE_CD = 0.7f;
     public static final float PLAYER_RADIUS = 22f;
-    public static final float PICKUP_RADIUS = 46f;
+    public static final float PICKUP_RADIUS = 43.2f;   // 0.6 tile，§5.7 拾取半径
+
+    // ---- 战斗手感常量（§5.7 武器特性；引擎可选用） ----
+    public static final float TASER_PARALYZE_TIME = 2.5f;    // 泰瑟枪麻痹
+    public static final float DEFIB_STUN_TIME = 1.5f;        // 除颤器击晕
+    public static final float DEFIB_EMP_RADIUS = 190f;       // 除颤器 EMP 半径（对哨兵枪必杀）
+    public static final float BUNSEN_BURN_TIME = 3f;         // 本生灯点燃地面 3s
+    public static final float BUNSEN_BURN_DPS = 11f;         // 点燃持续伤害
+    public static final float CAMERA_ALERT_TIME = 0.5f;      // 进入监控视野 0.5s 触发警报
+    public static final float ALERT_CHASE_TIME = 3f;         // 丢失目标后继续追 3s
 
     // ---- 器官 ----
     public static final float ORGAN_HEART_HP = 20f;
@@ -145,7 +159,7 @@ public final class Balance {
         ENEMIES[EnemyType.FLU_PATIENT.ordinal()] = new EnemyStats(40f, 72f, 6f, 0f, 108f, 2.2f, 24f, true, false, 380f);
         ENEMIES[EnemyType.TECH.ordinal()] = new EnemyStats(50f, 108f, 14f, 360f, 360f, 2.0f, 24f, true, false, 560f);
         ENEMIES[EnemyType.NURSE.ordinal()] = new EnemyStats(70f, 130f, 18f, 324f, 72f, 1.2f, 24f, false, false, 0f);
-        ENEMIES[EnemyType.SENTRY.ordinal()] = new EnemyStats(40f, 0f, 8f, 432f, 432f, 0.5f, 26f, true, true, 900f);
+        ENEMIES[EnemyType.SENTRY.ordinal()] = new EnemyStats(40f, 0f, 8f, 432f, 432f, 1.0f, 26f, true, true, 900f);
         ENEMIES[EnemyType.BOSS.ordinal()] = new EnemyStats(400f, 158f, 24f, 360f, 600f, 1.2f, 34f, true, false, 700f);
     }
 

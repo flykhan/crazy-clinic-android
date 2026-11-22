@@ -26,6 +26,14 @@ public final class Palette {
     public static final int GOLD = 0xFFF2B33D;
     public static final int ORANGE = 0xFFF08A3C;
     public static final int ALERT = 0xFFFF5A3C;
+    public static final int MINT_DARK = 0xFF4E9A7C;
+    public static final int INK = 0xFF10141A;
+    public static final int INK_SOFT = 0xFF1B222C;
+    public static final int GOLD_DARK = 0xFFB07A1E;
+    public static final int BLUE_DARK = 0xFF2C5C92;
+    public static final int PURPLE_DARK = 0xFF6E4FA0;
+    public static final int RED_LIGHT = 0xFFFF7A66;
+    public static final int GREEN_DARK = 0xFF2F7A50;
 
     // 医院场景
     public static final int FLOOR_A = 0xFF3E4756;

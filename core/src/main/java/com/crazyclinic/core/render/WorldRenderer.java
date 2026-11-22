@@ -15,134 +15,268 @@ import com.crazyclinic.core.world.TileMap;
 import com.crazyclinic.core.world.TileType;
 import com.crazyclinic.core.world.World;
 
+import java.util.WeakHashMap;
+
 /**
- * 世界渲染（占位实现：几何色块；美术代理负责程序化重绘为医院场景）。
- * 只负责 720x960 世界视口，不画 HUD。
+ * 720x960 世界视口渲染：医院瓦片/物件 → 贴花 → 拾取物 → 角色（y 排序）→ 子弹/粒子/文字
+ * → 灯光/暗角/警报/受伤红闪。所有图元程序化绘制，无位图。
  */
 public final class WorldRenderer {
+    private static final int MAX_PARTICLES = 300;
+
+    // 灯具位置缓存（每张地图只算一次，确定性哈希；WeakHashMap 避免持有旧地图）
+    private static final WeakHashMap<TileMap, float[]> LIGHTS = new WeakHashMap<>();
+
+    // 实体 y 排序 scratch（单渲染线程，复用，避免每帧分配）
+    private static Enemy[] enemyScratch = new Enemy[0];
+    private static float[] keyScratch = new float[0];
+
     public void render(Game game, Renderer r, World w) {
         r.clear(Palette.BG_DEEP);
-        r.save();
-        r.clipRect(0, 0, World.VIEW_W, World.VIEW_H);
-        r.translate(-w.cameraX, -w.cameraY);
+        TileMap map = w.map;
+        Player p = w.player;
 
-        int minTx = Math.max(0, w.map.tx(w.cameraX) - 1);
-        int maxTx = Math.min(w.map.width - 1, w.map.tx(w.cameraX + World.VIEW_W) + 1);
-        int minTy = Math.max(0, w.map.ty(w.cameraY) - 1);
-        int maxTy = Math.min(w.map.height - 1, w.map.ty(w.cameraY + World.VIEW_H) + 1);
+        // 屏幕震动
+        float shakeX = 0f, shakeY = 0f;
+        if (w.shake > 0.01f) {
+            shakeX = (float) Math.sin(w.time * 67.3f) * w.shake * 7f;
+            shakeY = (float) Math.cos(w.time * 51.7f) * w.shake * 5f;
+        }
+
+        int minTx = Math.max(0, map.tx(w.cameraX) - 1);
+        int maxTx = Math.min(map.width - 1, map.tx(w.cameraX + World.VIEW_W) + 1);
+        int minTy = Math.max(0, map.ty(w.cameraY) - 1);
+        int maxTy = Math.min(map.height - 1, map.ty(w.cameraY + World.VIEW_H) + 1);
+        int tint = TileArt.themeTint(w);
+
+        r.save();
+        r.clipRect(0f, 0f, World.VIEW_W, World.VIEW_H);
+        r.translate(-w.cameraX + shakeX, -w.cameraY + shakeY);
+
+        // ---- 1. 地面 ----
         for (int ty = minTy; ty <= maxTy; ty++) {
             for (int tx = minTx; tx <= maxTx; tx++) {
-                drawTile(r, w.map, tx, ty);
+                if (!TileArt.isWallLike(map.type(tx, ty))) {
+                    TileArt.drawFloor(r, map, tx, ty, tint);
+                }
             }
         }
+        // 墙脚接触阴影
+        for (int ty = minTy; ty <= maxTy; ty++) {
+            for (int tx = minTx; tx <= maxTx; tx++) {
+                if (!TileArt.isWallLike(map.type(tx, ty))) {
+                    TileArt.drawContactShadow(r, map, tx, ty);
+                }
+            }
+        }
+
+        // ---- 2. 地面贴花 ----
         for (Decal d : w.decals) {
-            r.fillCircle(d.x, d.y, 22f * d.scale, Palette.alpha(d.color, 0.35f * (d.life / d.maxLife)));
+            if (inView(d.x, d.y, w, 80f)) FxArt.drawDecal(r, w, d);
         }
-        for (Pickup p : w.pickups) {
-            if (p.taken) continue;
-            float bob = (float) Math.sin(w.time * 3f + p.bob) * 4f;
-            r.fillCircle(p.x, p.y + bob, 18f, Palette.GOLD);
-            r.strokeCircle(p.x, p.y + bob, 22f, 3f, Palette.TEXT);
-        }
-        for (Enemy e : w.enemies) {
-            if (e.isDead()) continue;
-            int c = e.type == com.crazyclinic.core.world.EnemyType.SENTRY ? Palette.CYAN
-                    : e.type == com.crazyclinic.core.world.EnemyType.BOSS ? Palette.PURPLE
-                    : e.type == com.crazyclinic.core.world.EnemyType.NURSE ? Palette.MINT : Palette.RED;
-            r.fillCircle(e.x, e.y, e.radius, c);
-            r.fillCircle(e.x, e.y, e.radius * 0.5f, Palette.BLACK);
-            r.save();
-            r.translate(e.x, e.y);
-            r.rotate((float) Math.toDegrees(e.angle));
-            r.fillRect(0, -3, e.radius + 14, 6, Palette.TEXT);
-            r.restore();
-            if (e.hp < e.maxHp) {
-                r.fillRect(e.x - 24, e.y - 34, 48, 6, Palette.alpha(Palette.BLACK, 0.6f));
-                r.fillRect(e.x - 24, e.y - 34, 48 * (e.hp / e.maxHp), 6, Palette.RED);
+
+        // ---- 3. 墙 / 门 / 物件（按行序绘制，保证墙正面覆盖下方地面） ----
+        for (int ty = minTy; ty <= maxTy; ty++) {
+            for (int tx = minTx; tx <= maxTx; tx++) {
+                TileType t = map.type(tx, ty);
+                switch (t) {
+                    case WALL: TileArt.drawWall(r, map, tx, ty, tint); break;
+                    case WINDOW: TileArt.drawWindowWall(r, map, tx, ty, tint); break;
+                    case DOOR_LOCKED: TileArt.drawDoor(r, tx, ty, true, false); break;
+                    case DOOR_OPEN: TileArt.drawDoor(r, tx, ty, false, true); break;
+                    case ELEVATOR: TileArt.drawElevator(r, tx, ty, w.elevatorUnlocked); break;
+                    case COMPUTER: TileArt.drawComputer(r, tx, ty, w.camerasDisabled, w.time); break;
+                    case LOCKER: TileArt.drawLocker(r, tx, ty); break;
+                    case CRATE: TileArt.drawCrate(r, tx, ty); break;
+                    case BED: TileArt.drawBed(r, tx, ty); break;
+                    default: break;
+                }
             }
         }
-        for (Projectile p : w.projectiles) {
-            r.fillCircle(p.x, p.y, 4f, p.fromPlayer ? Palette.GOLD : Palette.ALERT);
+
+        // ---- 4. 拾取物 ----
+        for (Pickup pk : w.pickups) {
+            if (pk.taken) continue;
+            if (!inView(pk.x, pk.y, w, 60f)) continue;
+            FxArt.drawPickup(r, w, pk);
         }
-        drawPlayer(r, w.player, w.time);
-        for (Particle p : w.particles) {
-            float a = p.life / p.maxLife;
-            r.fillCircle(p.x, p.y, p.size * a, Palette.alpha(p.color, a));
+
+        // ---- 5. 角色（按 y 排序；玩家插入其间） ----
+        drawSortedActors(r, w);
+
+        // ---- 6. 子弹 ----
+        for (Projectile pr : w.projectiles) {
+            if (!inView(pr.x, pr.y, w, 40f)) continue;
+            FxArt.drawProjectile(r, w, pr);
         }
+
+        // ---- 7. 粒子 ----
+        int drawn = 0;
+        for (int i = 0; i < w.particles.size() && drawn < MAX_PARTICLES; i++) {
+            Particle pt = w.particles.get(i);
+            if (pt.life <= 0f) continue;
+            if (!inView(pt.x, pt.y, w, 40f)) continue;
+            FxArt.drawParticle(r, pt);
+            drawn++;
+        }
+
+        // ---- 8. 浮动文字 ----
         for (FloatingText ft : w.floatingTexts) {
-            r.setTextSize(ft.size);
-            r.setTextBold(true);
-            r.setTextAlign(1);
-            r.setTextColor(Palette.alpha(ft.color, ft.life / ft.maxLife));
-            r.drawText(ft.text, ft.x, ft.y);
+            if (ft.life <= 0f) continue;
+            float a = MathUtil.clamp(ft.life / ft.maxLife, 0f, 1f);
+            float rise = (1f - a) * 26f;
+            Art.textOutlined(r, ft.text, ft.x, ft.y - rise, ft.size,
+                    Palette.alpha(ft.color, Math.min(1f, a * 1.6f)));
         }
+
         r.restore();
 
-        // 暗角 + 玩家光圈
-        float px = w.player.x - w.cameraX;
-        float py = w.player.y - w.cameraY;
-        r.fillRadialGradient(px, py, 640f, Palette.alpha(Palette.BLACK, 0f), Palette.alpha(Palette.BLACK, 0.55f));
-        if (w.player.hurtFlash > 0f) {
-            r.fillRect(0, 0, World.VIEW_W, World.VIEW_H, Palette.alpha(Palette.RED, 0.28f * w.player.hurtFlash));
-        }
+        // ---- 9. 光照 / 暗角 / 屏幕反馈（视口坐标） ----
+        drawAtmosphere(r, w, shakeX, shakeY, tint);
     }
 
-    private void drawTile(Renderer r, TileMap map, int tx, int ty) {
-        float x = tx * TileMap.TILE;
-        float y = ty * TileMap.TILE;
-        TileType t = map.type(tx, ty);
-        switch (t) {
-            case WALL:
-            case WINDOW:
-                r.fillRect(x, y, TileMap.TILE, TileMap.TILE, Palette.WALL_TOP);
-                r.fillRect(x, y + TileMap.TILE * 0.72f, TileMap.TILE, TileMap.TILE * 0.28f, Palette.WALL_SIDE);
-                break;
-            case DOOR_LOCKED:
-                r.fillRect(x, y, TileMap.TILE, TileMap.TILE, Palette.DOOR);
-                r.fillRect(x + 10, y + 10, TileMap.TILE - 20, TileMap.TILE - 20, Palette.DOOR_LOCK);
-                break;
-            case DOOR_OPEN:
-                r.fillRect(x, y, TileMap.TILE, TileMap.TILE, Palette.DOOR);
-                break;
-            case ELEVATOR:
-                r.fillRect(x, y, TileMap.TILE, TileMap.TILE, Palette.ELEVATOR);
-                r.setTextSize(24);
-                r.setTextAlign(1);
-                r.setTextColor(Palette.TEXT);
-                r.drawText("↑", x + 36, y + 36);
-                break;
-            case COMPUTER:
-                r.fillRect(x, y, TileMap.TILE, TileMap.TILE, Palette.COMPUTER);
-                r.fillRect(x + 8, y + 8, TileMap.TILE - 16, TileMap.TILE - 24, Palette.BLUE);
-                break;
-            case LOCKER:
-                r.fillRect(x, y, TileMap.TILE, TileMap.TILE, Palette.LOCKER);
-                r.fillRect(x + 6, y + 6, TileMap.TILE - 12, TileMap.TILE - 12, Palette.PANEL_STROKE);
-                break;
-            case CRATE:
-                r.fillRect(x, y, TileMap.TILE, TileMap.TILE, Palette.CRATE);
-                break;
-            case BED:
-                r.fillRect(x, y, TileMap.TILE, TileMap.TILE, Palette.BED);
-                r.fillRect(x + 8, y + 6, TileMap.TILE - 16, TileMap.TILE - 30, Palette.WHITE);
-                break;
-            default:
-                boolean even = ((tx + ty) & 1) == 0;
-                r.fillRect(x, y, TileMap.TILE, TileMap.TILE, even ? Palette.FLOOR_A : Palette.FLOOR_B);
-                r.strokeRect(x, y, TileMap.TILE, TileMap.TILE, 1.5f, Palette.FLOOR_GROUT);
-                break;
-        }
+    private static boolean inView(float x, float y, World w, float margin) {
+        return x >= w.cameraX - margin && x <= w.cameraX + World.VIEW_W + margin
+                && y >= w.cameraY - margin && y <= w.cameraY + World.VIEW_H + margin;
     }
 
-    private void drawPlayer(Renderer r, Player p, float time) {
-        r.fillCircle(p.x, p.y + 6, p.radius * 1.1f, Palette.SHADOW);
-        float bob = p.moving ? (float) Math.sin(time * 16f) * 2f : 0f;
+    private void drawSortedActors(Renderer r, World w) {
+        int n = 0;
+        for (Enemy e : w.enemies) {
+            if (!inView(e.x, e.y, w, 120f)) continue;
+            if (n >= enemyScratch.length) grow(n + 8);
+            enemyScratch[n] = e;
+            keyScratch[n] = e.y;
+            n++;
+        }
+        // 插入排序（n 很小）
+        for (int i = 1; i < n; i++) {
+            Enemy e = enemyScratch[i];
+            float key = keyScratch[i];
+            int j = i - 1;
+            while (j >= 0 && keyScratch[j] > key) {
+                enemyScratch[j + 1] = enemyScratch[j];
+                keyScratch[j + 1] = keyScratch[j];
+                j--;
+            }
+            enemyScratch[j + 1] = e;
+            keyScratch[j + 1] = key;
+        }
+        Player p = w.player;
+        boolean playerDrawn = false;
+        for (int i = 0; i < n; i++) {
+            Enemy e = enemyScratch[i];
+            if (!playerDrawn && !p.dead && e.y > p.y) {
+                CharacterArt.drawPlayer(r, w, p);
+                playerDrawn = true;
+            }
+            CharacterArt.drawEnemy(r, w, e);
+        }
+        if (!playerDrawn) CharacterArt.drawPlayer(r, w, p);
+        // 清理引用，避免 static 数组持有已移除敌人
+        for (int i = 0; i < n; i++) enemyScratch[i] = null;
+    }
+
+    private static void grow(int need) {
+        int cap = Math.max(need, Math.max(8, enemyScratch.length * 2));
+        Enemy[] ne = new Enemy[cap];
+        float[] nk = new float[cap];
+        System.arraycopy(enemyScratch, 0, ne, 0, enemyScratch.length);
+        System.arraycopy(keyScratch, 0, nk, 0, keyScratch.length);
+        enemyScratch = ne;
+        keyScratch = nk;
+    }
+
+    // ==================== 氛围 ====================
+
+    private void drawAtmosphere(Renderer r, World w, float shakeX, float shakeY, int tint) {
+        float px = w.player.x - w.cameraX + shakeX;
+        float py = w.player.y - w.cameraY + shakeY;
+
         r.save();
-        r.translate(p.x, p.y + bob);
-        r.rotate((float) Math.toDegrees(p.angle));
-        r.fillCircle(0, 0, p.radius, Palette.alpha(Palette.TEXT, p.invisTimer > 0 ? 0.5f : 1f));
-        r.fillCircle(p.radius * 0.4f, 0, p.radius * 0.55f, Palette.MINT);
-        r.fillRect(p.radius * 0.5f, -3, p.radius + 10, 6, Palette.GOLD);
+        r.clipRect(0f, 0f, World.VIEW_W, World.VIEW_H);
+
+        // 每层轻微色温（区分病区）
+        r.fillRect(0f, 0f, World.VIEW_W, World.VIEW_H, Palette.alpha(tint, 0.045f));
+
+        // 日光灯光池
+        float[] lights = lights(w.map);
+        for (int i = 0; i < lights.length; i += 2) {
+            float lx = lights[i] - w.cameraX + shakeX;
+            float ly = lights[i + 1] - w.cameraY + shakeY;
+            if (lx < -160f || lx > World.VIEW_W + 160f || ly < -160f || ly > World.VIEW_H + 160f) continue;
+            float flicker = 1f;
+            int id = (int) (lights[i] + lights[i + 1] * 3.1f);
+            float h = Art.hash3(id, id + 7, 3);
+            if (h > 0.72f) {
+                flicker = 0.82f + 0.18f * (float) Math.sin(w.time * (7f + h * 9f) + id);
+            }
+            // 6 层同心椭圆近似柔光，避免硬边圆环
+            Art.ellipse(r, lx, ly, 158f, 132f, Art.a(Palette.LIGHT, 0.014f * flicker));
+            Art.ellipse(r, lx, ly, 128f, 106f, Art.a(Palette.LIGHT, 0.018f * flicker));
+            Art.ellipse(r, lx, ly, 100f, 82f, Art.a(Palette.LIGHT, 0.022f * flicker));
+            Art.ellipse(r, lx, ly, 74f, 60f, Art.a(Palette.LIGHT, 0.027f * flicker));
+            Art.ellipse(r, lx, ly, 50f, 40f, Art.a(0xFFFFF6DE, 0.032f * flicker));
+            Art.ellipse(r, lx, ly, 26f, 20f, Art.a(0xFFFFF6DE, 0.042f * flicker));
+        }
+
+        // 玩家为中心的光圈（暖白，多层柔光）
+        Art.ellipse(r, px, py, 280f, 246f, Art.a(Palette.LIGHT, 0.013f));
+        Art.ellipse(r, px, py, 210f, 184f, Art.a(Palette.LIGHT, 0.016f));
+        Art.ellipse(r, px, py, 150f, 130f, Art.a(Palette.LIGHT, 0.020f));
+        Art.ellipse(r, px, py, 100f, 86f, Art.a(0xFFFFF6DE, 0.024f));
+        Art.ellipse(r, px, py, 58f, 50f, Art.a(0xFFFFF6DE, 0.030f));
+
+        // 暗角：中心透明 → 边缘深黑
+        float vg = w.player.hp / Math.max(1f, w.player.maxHp) < 0.3f ? 0.80f : 0.70f;
+        r.fillRadialGradient(px, py, 660f, Art.a(Palette.BLACK, 0f), Art.a(Palette.BLACK, vg));
+
+        // 警戒：屏幕边缘红色呼吸
+        if (w.alert > 0.02f) {
+            float pulse = 0.5f + 0.5f * (float) Math.sin(w.time * (3.5f + w.alert * 4f));
+            float a = MathUtil.clamp(w.alert, 0f, 1f) * (0.07f + 0.07f * pulse);
+            r.fillRadialGradient(World.VIEW_W * 0.5f, World.VIEW_H * 0.5f, 700f,
+                    Art.a(Palette.RED, 0f), Art.a(Palette.ALERT, a));
+            // 顶部警报灯条
+            r.fillVerticalGradient(0f, 0f, World.VIEW_W, 22f,
+                    Art.a(Palette.ALERT, a * 1.2f), Art.a(Palette.ALERT, 0f));
+            r.fillVerticalGradient(0f, World.VIEW_H - 22f, World.VIEW_W, 22f,
+                    Art.a(Palette.ALERT, 0f), Art.a(Palette.ALERT, a * 1.2f));
+        }
+
+        // 受伤红闪
+        if (w.player.hurtFlash > 0.01f) {
+            r.fillRect(0f, 0f, World.VIEW_W, World.VIEW_H,
+                    Palette.alpha(Palette.RED, 0.30f * MathUtil.clamp(w.player.hurtFlash, 0f, 1f)));
+        }
+        // 隐身时轻微蓝色氛围
+        if (w.player.invisTimer > 0f) {
+            r.fillRadialGradient(px, py, 420f, Art.a(Palette.CYAN, 0f),
+                    Art.a(Palette.CYAN, 0.10f));
+        }
         r.restore();
+    }
+
+    private static float[] lights(TileMap map) {
+        float[] cached = LIGHTS.get(map);
+        if (cached != null) return cached;
+        int count = 0;
+        for (int ty = 0; ty < map.height; ty++) {
+            for (int tx = 0; tx < map.width; tx++) {
+                if (!map.solid(tx, ty) && Art.hash(tx * 13 + 5, ty * 7 + 3) > 0.968f) count++;
+            }
+        }
+        float[] out = new float[count * 2];
+        int k = 0;
+        for (int ty = 0; ty < map.height && k < out.length; ty++) {
+            for (int tx = 0; tx < map.width && k < out.length; tx++) {
+                if (!map.solid(tx, ty) && Art.hash(tx * 13 + 5, ty * 7 + 3) > 0.968f) {
+                    out[k++] = map.cx(tx);
+                    out[k++] = map.cy(ty);
+                }
+            }
+        }
+        LIGHTS.put(map, out);
+        return out;
     }
 }

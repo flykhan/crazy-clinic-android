@@ -10,6 +10,7 @@
 [![Java](https://img.shields.io/badge/Java-17-orange?logo=openjdk&logoColor=white)](https://openjdk.org)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Build](https://github.com/flykhan/crazy-clinic-android/actions/workflows/android.yml/badge.svg)](https://github.com/flykhan/crazy-clinic-android/actions/workflows/android.yml)
+[![](https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness)
 
 [玩法](#玩法) · [截图](#截图) · [下载](#下载) · [构建](#从源码构建) · [架构](#技术架构) · [原版考证](#关于原版) · [致谢](#致谢)
 
@@ -62,8 +63,10 @@
 | 标题 | 关卡选择 | 游戏中 |
 |---|---|---|
 | ![title](docs/screenshots/title.png) | ![level select](docs/screenshots/level_select.png) | ![gameplay](docs/screenshots/gameplay_floor5.png) |
-| **骇客小游戏** | **结算** | **设置** |
-| ![hacking](docs/screenshots/hacking.png) | ![result](docs/screenshots/result_win.png) | ![settings](docs/screenshots/settings.png) |
+| **骇客小游戏** | **BOSS · 赞恩** | **结算** |
+| ![hacking](docs/screenshots/hacking.png) | ![boss](docs/screenshots/gameplay_floor10.png) | ![result](docs/screenshots/result_win.png) |
+| **剧情简报** | **操作教学** | **设置** |
+| ![intro](docs/screenshots/intro.png) | ![tutorial](docs/screenshots/tutorial.png) | ![settings](docs/screenshots/settings.png) |
 
 ## 下载
 
@@ -137,3 +140,13 @@ tools/audio/    程序化 WAV 音效/BGM 生成脚本
 ## License
 
 代码以 [MIT License](LICENSE) 开源。原版游戏相关内容版权归原权利人所有，本项目不主张任何相关权利。
+
+---
+
+<div align="center">
+
+[![](https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness)
+
+用 **DeepSeek Harness** 多智能体协作完成：Lead 架构/集成/QA · engine 引擎 · art 美术 · ui 界面 · level 关卡 · android 安卓 · researcher 原版逆向
+
+</div>

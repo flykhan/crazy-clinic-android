@@ -1,16 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  疯狂诊所启动图标（adaptive icon 前景层，108x108 viewport，安全区约 18..90）：
+  薄荷绿医疗十字 + 贯穿的心电图脉冲 + 一滴血，呼应“逃出疯狂医院”。
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+
+    <!-- 深色圆底，让前景在浅色主题桌面上也清晰 -->
+    <path
+        android:fillColor="#16202A"
+        android:pathData="M54,54m-34,0a34,34 0,1 1,68 0a34,34 0,1 1,-68 0" />
+
+    <!-- 医疗十字（薄荷绿） -->
     <path
         android:fillColor="#7FD1AE"
-        android:pathData="M54,54m-26,0a26,26 0,1 1,52 0a26,26 0,1 1,-52 0" />
+        android:pathData="M45,26h18v19h19v18H63v19H45V63H26V45h19z" />
+
+    <!-- 心电图脉冲线（深色，穿过十字） -->
     <path
-        android:fillColor="#0E1014"
-        android:pathData="M47,30h14v17h17v14H61v17H47V61H30V47h17z" />
+        android:fillColor="#00000000"
+        android:strokeColor="#0E1014"
+        android:strokeWidth="2.6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M30,54 L40,54 L44,45.5 L48,63 L52,48.5 L56,54 L78,54" />
+
+    <!-- 一滴血（红色），从十字右下角滴落 -->
     <path
         android:fillColor="#E04B3A"
-        android:pathData="M54,54m-6,0a6,6 0,1 1,12 0a6,6 0,1 1,-12 0" />
+        android:pathData="M67,68 L71.5,74.5 A5.5,5.5 0 1 1 62.5,74.5 Z" />
 </vector>
